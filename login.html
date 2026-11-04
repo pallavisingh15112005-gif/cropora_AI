@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Login · Mandi Bhav Bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --forest: #17402a;
+    --moss: #2c6a3f;
+    --saffron: #e0801a;
+    --wheat: #f0cf7a;
+    --cream: #f7f2e3;
+    --sheet: #fffdf6;
+    --ink: #1d2418;
+    --muted: #6e7662;
+    --hair: #e4dac0;
+    --error: #b9452c;
+    --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1  0 0 0 0 0.12  0 0 0 0 0.07  0 0 0 .05 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --cream: #0f1510; --sheet: #161d16; --ink: #ecefe4; --muted: #98a18b;
+      --hair: #2a352a; --forest: #0f2a1a; --moss: #3d8154; --error: #e07b62;
+    }
+  }
+  :root[data-theme="dark"] {
+    --cream: #0f1510; --sheet: #161d16; --ink: #ecefe4; --muted: #98a18b;
+    --hair: #2a352a; --forest: #0f2a1a; --moss: #3d8154; --error: #e07b62;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Noto Sans Devanagari", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--cream) var(--grain);
+    display: grid; place-items: center;
+    padding: 24px 16px;
+  }
+
+  .card {
+    width: 100%; max-width: 420px;
+    background: var(--sheet);
+    border: 1px solid var(--hair);
+    border-radius: 6px 22px 22px 6px;
+    box-shadow: 0 24px 60px -20px rgba(23,64,42,.25);
+    position: relative; overflow: hidden;
+    animation: rise .35s ease both;
+  }
+  .card::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
+    background: linear-gradient(180deg, var(--forest), var(--moss) 60%, var(--saffron));
+  }
+
+  .top { padding: 30px 32px 20px 36px; border-bottom: 1px dashed var(--hair); }
+  .kicker {
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--saffron); font-weight: 600;
+  }
+  h1 {
+    margin: 6px 0 4px;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 28px; font-weight: 700; line-height: 1.1;
+    color: var(--forest);
+  }
+  .top p { margin: 0; font-size: 14px; color: var(--muted); }
+
+  form { padding: 22px 32px 8px 36px; display: grid; gap: 16px; }
+  label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); font-weight: 500; }
+
+  .field {
+    display: flex; align-items: center;
+    background: var(--cream); border: 1px solid var(--hair);
+    border-radius: 12px; padding: 0 12px;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .field:focus-within { border-color: var(--moss); box-shadow: 0 0 0 4px rgba(44,106,63,.14); }
+  .field input {
+    flex: 1; min-width: 0; font: inherit; font-size: 15px; color: var(--ink);
+    background: transparent; border: none; outline: none; padding: 12px 0;
+  }
+  .field input::placeholder { color: var(--muted); opacity: .8; }
+  .field.invalid { border-color: var(--error); }
+  .toggle {
+    font: inherit; font-size: 12px; font-weight: 600; color: var(--moss);
+    background: none; border: none; cursor: pointer; padding: 6px 4px;
+  }
+
+  .err { color: var(--error); font-size: 13px; display: none; }
+  .err.show { display: block; }
+  .err.info { color: var(--muted); }
+
+  .row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted); }
+  .row label.check { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+  .row a { color: var(--moss); text-decoration: none; font-weight: 600; }
+  .row a:hover { text-decoration: underline; }
+
+  button.submit {
+    font: inherit; font-size: 16px; font-weight: 600; padding: 13px;
+    border: none; border-radius: 12px;
+    background: var(--saffron); color: #fff; cursor: pointer;
+    transition: filter .15s ease, transform .12s ease;
+  }
+  button.submit:hover { filter: brightness(1.06); }
+  button.submit:active { transform: translateY(1px); }
+  button.submit:disabled { opacity: .7; cursor: progress; }
+
+  .demo {
+    margin: 14px 32px 0 36px;
+    padding: 10px 12px; border-radius: 10px;
+    background: rgba(224,128,26,.09); border-left: 3px solid var(--saffron);
+    font-size: 12px; color: var(--muted); line-height: 1.6;
+  }
+  .demo b { color: var(--ink); }
+
+  .foot { text-align: center; font-size: 13px; color: var(--muted); padding: 16px 32px 24px; }
+  .foot a { color: var(--moss); font-weight: 600; text-decoration: none; }
+  .foot a:hover { text-decoration: underline; }
+
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @media (max-width: 480px) {
+    body { padding: 0; }
+    .card { border-radius: 0; border: none; box-shadow: none; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+    .card::before { display: none; }
+    .top, form, .demo, .foot { padding-left: 22px; padding-right: 22px; }
+    .demo { margin-left: 22px; margin-right: 22px; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="top">
+    <div class="kicker">Mandi Bulletin</div>
+    <h1>Swagat hai</h1>
+    <p>Login karke apna fasal bhav dekhein</p>
+  </div>
+
+  <form id="loginForm" novalidate>
+    <label>
+      Email ya mobile number
+      <div class="field" id="idField">
+        <input type="text" id="id" name="id" placeholder="you@example.com" autocomplete="username" required />
+      </div>
+    </label>
+
+    <label>
+      Password
+      <div class="field" id="pwField">
+        <input type="password" id="pw" name="pw" placeholder="Apna password likhein" autocomplete="current-password" required />
+        <button type="button" class="toggle" id="toggle" aria-label="Password dikhayein ya chhupayein">Dikhayein</button>
+      </div>
+    </label>
+
+    <div class="err" id="err" role="alert"></div>
+
+    <div class="row">
+      <label class="check"><input type="checkbox" id="remember" /> Mujhe yaad rakho</label>
+      <a href="#" id="forgot">Password bhool gaye?</a>
+    </div>
+
+    <button class="submit" type="submit" id="submit">Login karein</button>
+  </form>
+
+  <div class="demo">
+    <b>Demo login:</b> demo@mandi.local / demo123<br />
+    Sirf testing ke liye. Asli login ke liye backend jodna hoga.
+  </div>
+
+  <div class="foot">
+    Account nahi hai? <a href="#" id="signup">Naya account banayein</a>
+  </div>
+</main>
+
+<script>
+  // ---- Demo only. Real login needs a server and hashed passwords. ----
+  const DEMO_USER = { id: "demo@mandi.local", pw: "demo123" };
+
+  const form = document.getElementById("loginForm");
+  const idInput = document.getElementById("id");
+  const pwInput = document.getElementById("pw");
+  const idField = document.getElementById("idField");
+  const pwField = document.getElementById("pwField");
+  const err = document.getElementById("err");
+  const submit = document.getElementById("submit");
+  const toggle = document.getElementById("toggle");
+
+  toggle.addEventListener("click", () => {
+    const show = pwInput.type === "password";
+    pwInput.type = show ? "text" : "password";
+    toggle.textContent = show ? "Chhupayein" : "Dikhayein";
+  });
+
+  function showError(msg, info = false) {
+    err.textContent = msg;
+    err.classList.toggle("info", info);
+    err.classList.add("show");
+  }
+
+  function clearError() {
+    err.classList.remove("show");
+    idField.classList.remove("invalid");
+    pwField.classList.remove("invalid");
+  }
+
+  [idInput, pwInput].forEach(el => el.addEventListener("input", clearError));
+
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    const id = idInput.value.trim();
+    const pw = pwInput.value;
+
+    idField.classList.toggle("invalid", !id);
+    pwField.classList.toggle("invalid", !pw);
+    if (!id || !pw) {
+      showError("Email/mobile aur password dono bharna zaroori hai.");
+      return;
+    }
+
+    submit.disabled = true;
+    submit.textContent = "Ruko, check ho raha hai...";
+
+    setTimeout(() => {
+      const ok = id.toLowerCase() === DEMO_USER.id && pw === DEMO_USER.pw;
+      if (ok) {
+        const store = document.getElementById("remember").checked ? localStorage : sessionStorage;
+        store.setItem("mbb_user", id);
+        window.location.href = "index.html";
+      } else {
+        submit.disabled = false;
+        submit.textContent = "Login karein";
+        idField.classList.add("invalid");
+        pwField.classList.add("invalid");
+        showError("Email ya password galat hai. Dobara koshish karein.");
+        pwInput.value = "";
+        pwInput.focus();
+      }
+    }, 700);
+  });
+
+  document.getElementById("forgot").addEventListener("click", e => {
+    e.preventDefault();
+    showError("Password reset abhi demo mein nahi hai.", true);
+  });
+
+  document.getElementById("signup").addEventListener("click", e => {
+    e.preventDefault();
+    alert("Naya account banane ka feature abhi demo mein nahi hai.");
+  });
+</script>
+</body>
+</html>
