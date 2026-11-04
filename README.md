@@ -1,4 +1,4 @@
-# Mandi Bhav Bot
+# Cropora AI
 
 Kisan ke liye fasal ka mandi bhav batane wali website. Data data.gov.in (Agmarknet) se roz aata hai.
 
