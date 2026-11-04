@@ -11,7 +11,7 @@ Kisan ke liye fasal ka mandi bhav batane wali website. Data data.gov.in (Agmarkn
 
 ## Online setup (GitHub Pages)
 
-1. GitHub par nayi **public** repository banao, jaise `mandi-bhav-bot`.
+1. GitHub par nayi **public** repository banao, jaise `cropora-ai` (ya jo naam aap chaho).
 2. Is folder ki sari files repository mein upload karo (`index.html`, `data/`, `.github/`, etc.).
 3. **Secret add karo:** repo → Settings → Secrets and variables → Actions → New repository secret.
    - Name: `DATA_GOV_API_KEY`
@@ -19,7 +19,7 @@ Kisan ke liye fasal ka mandi bhav batane wali website. Data data.gov.in (Agmarkn
 4. **Pages on karo:** Settings → Pages → Source: "Deploy from a branch", Branch: `main`, folder: `/ (root)`.
 5. **Pehli baar fetch chalao:** Actions tab → "Update mandi prices" → Run workflow.
    Ye `data/prices.json` bana dega aur commit karega.
-6. Website ka link Pages settings mein dikhega, jaise `https://USERNAME.github.io/mandi-bhav-bot/`.
+6. Website ka link Pages settings mein dikhega, jaise `https://USERNAME.github.io/REPO-NAAM/`.
 
 Ab workflow roz apne aap chalega, aur site ko naya data milta rahega.
 

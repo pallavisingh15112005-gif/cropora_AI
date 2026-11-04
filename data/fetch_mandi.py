@@ -64,7 +64,7 @@ def fetch_page(api_key: str, offset: int) -> dict:
         f"filters[state]": WANTED_STATE,
     }
     url = API_URL + "?" + urllib.parse.urlencode(params)
-    req = urllib.request.Request(url, headers={"User-Agent": "mandi-bhav-bot/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "cropora-ai/1.0"})
     with urllib.request.urlopen(req, timeout=60) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
