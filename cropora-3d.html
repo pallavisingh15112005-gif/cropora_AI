@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="claude:viewport-fit-sides" content="cover" />
+<title>Cropora AI</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" />
+<!-- Three.js r128 (UMD). Pinned; released in 2021, so it is well past the two-week rule. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  /* Layout: a 3D wheat-field hero on top, then plain sections in one column.
+     Palette: deep field green for text, saffron for the one action, wheat for the light.
+     Type: Fraunces for headings and numbers, Noto Sans Devanagari for body text. */
+  :root {
+    --field: #17402a;
+    --moss: #2c6a3f;
+    --saffron: #e0801a;
+    --wheat: #f0cf7a;
+    --sky-top: #f8e7b8;
+    --sky-bottom: #f7f2e3;
+    --paper: #f7f2e3;
+    --sheet: #fffdf6;
+    --ink: #1d2418;
+    --muted: #5f6856;
+    --hair: #e0d6bb;
+    --serif: "Fraunces", Georgia, "Times New Roman", serif;
+    --sans: "Noto Sans Devanagari", "Segoe UI", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --field: #cfe6d2; --moss: #6fb281; --sky-top: #1d2a1f; --sky-bottom: #0f1510;
+      --paper: #0f1510; --sheet: #161d16; --ink: #ecefe4; --muted: #a3ab97; --hair: #2a352a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --field: #cfe6d2; --moss: #6fb281; --sky-top: #1d2a1f; --sky-bottom: #0f1510;
+    --paper: #0f1510; --sheet: #161d16; --ink: #ecefe4; --muted: #a3ab97; --hair: #2a352a;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.65;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Hero: the 3D field fills it. Text sits on top. */
+  .hero {
+    position: relative;
+    height: min(78vh, 680px);
+    min-height: 480px;
+    margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+    margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+    background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bottom) 70%);
+    overflow: hidden;
+  }
+  #field { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .hero.static #field { display: none; }
+  .hero-copy {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 0 max(16px, env(safe-area-inset-left, 0px)) 40px;
+    max-width: 960px; margin: 0 auto;
+    pointer-events: none;
+  }
+  .hero-copy > * { pointer-events: auto; }
+  .kicker {
+    font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--saffron); font-weight: 600; margin: 0 0 10px;
+  }
+  h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: clamp(40px, 8vw, 76px);
+    font-weight: 700; line-height: 1.02;
+    color: var(--field);
+    text-wrap: balance;
+  }
+  .lead {
+    margin: 14px 0 0; max-width: 46ch;
+    font-size: clamp(16px, 2.2vw, 19px);
+    color: var(--ink);
+  }
+  .cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+  .btn {
+    font: inherit; font-weight: 600; font-size: 15px;
+    text-decoration: none; padding: 12px 20px; border-radius: 12px;
+    border: 1px solid transparent; cursor: pointer; min-height: 44px;
+    display: inline-flex; align-items: center;
+  }
+  .btn.primary { background: var(--saffron); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.06); }
+  .btn.ghost { color: var(--field); border-color: var(--moss); background: transparent; }
+  .btn.ghost:hover { background: var(--field); color: var(--paper); }
+  .btn:focus-visible { outline: 3px solid var(--saffron); outline-offset: 2px; }
+
+  /* Sections */
+  main { max-width: 960px; margin: 0 auto; padding-block: 8px 56px; }
+  section { padding-block: 44px; border-top: 1px dashed var(--hair); }
+  h2 {
+    font-family: var(--serif); font-size: clamp(26px, 4vw, 36px); font-weight: 700;
+    color: var(--field); margin: 0 0 10px; line-height: 1.15; text-wrap: balance;
+  }
+  p { margin: 0 0 12px; max-width: 65ch; }
+  .muted { color: var(--muted); }
+
+  .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 20px; }
+  .rate {
+    background: var(--sheet); border: 1px solid var(--hair); border-top: 3px solid var(--moss);
+    border-radius: 12px; padding: 14px 16px; min-width: 0;
+  }
+  .rate .n { font-size: 13px; color: var(--muted); }
+  .rate .p {
+    font-family: var(--serif); font-size: 26px; font-weight: 700; color: var(--field);
+    font-variant-numeric: tabular-nums; margin: 2px 0;
+  }
+  .rate .c { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .up { color: #2a8a4a; } .down { color: #b9452c; } .flat { color: var(--muted); }
+  .note { font-size: 13px; color: var(--muted); margin-top: 12px; }
+
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 20px; }
+  .step { border-left: 3px solid var(--moss); padding: 4px 0 4px 16px; min-width: 0; }
+  .step b { display: block; font-family: var(--serif); font-size: 19px; color: var(--field); margin-bottom: 4px; }
+  .step span { font-size: 15px; color: var(--muted); }
+
+  .sms {
+    margin-top: 20px; background: var(--sheet); border: 1px solid var(--hair);
+    border-radius: 14px; padding: 18px 20px; max-width: 65ch;
+  }
+  .sms .label { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+  .sms p { margin: 6px 0 0; font-size: 15px; }
+
+  footer {
+    border-top: 1px dashed var(--hair); padding-block: 24px 0;
+    font-size: 13px; color: var(--muted);
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px;
+  }
+
+  @media (max-width: 560px) {
+    .hero { height: 82vh; min-height: 520px; }
+    .btn { flex: 1 1 auto; justify-content: center; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="hero" id="hero">
+  <canvas id="field" aria-hidden="true"></canvas>
+  <div class="hero-copy">
+    <p class="kicker">Kisan ke liye mandi bhav</p>
+    <h1>Cropora AI</h1>
+    <p class="lead">Fasal ka bhav roz ek jagah. Limit set karein, aur bhav wahan pahunchne par SMS paayein, Hindi ya English mein.</p>
+    <div class="cta-row">
+      <a class="btn primary" href="#prices">Aaj ka bhav dekhein</a>
+      <a class="btn ghost" href="alerts-preview.html">Alert set karein</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="prices">
+    <h2>Aaj ka bhav</h2>
+    <p class="muted">Ye sample bhav hain, asli mandi bhav nahi. Asli data roz ek baar aata hai.</p>
+    <div class="board">
+      <div class="rate"><div class="n">Gehu · Lucknow</div><div class="p">₹2,480</div><div class="c up">▲ ₹28 (1.1%)</div></div>
+      <div class="rate"><div class="n">Aloo · Agra</div><div class="p">₹1,180</div><div class="c flat">— sthir</div></div>
+      <div class="rate"><div class="n">Pyaaz · Lasalgaon</div><div class="p">₹1,420</div><div class="c down">▼ ₹140 (9.0%)</div></div>
+      <div class="rate"><div class="n">Tamatar · Kolar</div><div class="p">₹1,890</div><div class="c up">▲ ₹250 (15.2%)</div></div>
+    </div>
+    <p class="note">Rs per quintal. Trend pichhle din ke bhav se.</p>
+  </section>
+
+  <section id="how">
+    <h2>Kaise kaam karta hai</h2>
+    <div class="steps">
+      <div class="step"><b>1. Bhav aata hai</b><span>Government ke mandi data se roz ka latest bhav milta hai.</span></div>
+      <div class="step"><b>2. Limit set karein</b><span>Fasal, mandi, aur rate chunein: rate se upar ya neeche.</span></div>
+      <div class="step"><b>3. SMS aata hai</b><span>Limit cross hote hi ek SMS, Hindi, English, ya dono mein.</span></div>
+    </div>
+    <div class="sms">
+      <div class="label">Aisa SMS dikhega</div>
+      <p>Cropora AI: Tamatar ka bhav Kolar Mandi mein ab Rs 2100 hai (2026-11-06). Aapki limit Rs 2000 se ऊपर.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span>Cropora AI · College mini project</span>
+  <span>Ye demo hai. Asli bhav ke liye sarkari mandi portal dekhein.</span>
+</footer>
+
+<script>
+(function () {
+  const hero = document.getElementById("hero");
+  const canvas = document.getElementById("field");
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // If WebGL or Three.js is missing, keep the gradient and skip the scene.
+  let gl = null;
+  try { gl = document.createElement("canvas").getContext("webgl"); } catch (_) {}
+  if (!gl || typeof THREE === "undefined") { hero.classList.add("static"); return; }
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0xf7f2e3, 9, 22);
+
+  const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 100);
+  camera.position.set(0, 1.5, 6.5);
+  camera.lookAt(0, 0.9, -2);
+
+  // Ground
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(60, 60),
+    new THREE.MeshBasicMaterial({ color: 0xc9a85c })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = 0;
+  scene.add(ground);
+
+  // Sun with a soft glow sprite
+  const sun = new THREE.Mesh(
+    new THREE.SphereGeometry(0.9, 24, 24),
+    new THREE.MeshBasicMaterial({ color: 0xf6d37a })
+  );
+  sun.position.set(3.2, 3.6, -11);
+  scene.add(sun);
+
+  const glowCanvas = document.createElement("canvas");
+  glowCanvas.width = glowCanvas.height = 128;
+  const gctx = glowCanvas.getContext("2d");
+  const grad = gctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, "rgba(246,211,122,0.9)");
+  grad.addColorStop(1, "rgba(246,211,122,0)");
+  gctx.fillStyle = grad;
+  gctx.fillRect(0, 0, 128, 128);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(glowCanvas), transparent: true, depthWrite: false
+  }));
+  glow.scale.set(7, 7, 1);
+  glow.position.copy(sun.position);
+  scene.add(glow);
+
+  // Wheat stalks: one InstancedMesh for stems, one for ears
+  const COLS = 46, ROWS = 14;
+  const COUNT = COLS * ROWS;
+  const stemGeo = new THREE.CylinderGeometry(0.5, 0.5, 1, 5);
+  stemGeo.translate(0, 0.5, 0);
+  const earGeo = new THREE.SphereGeometry(0.5, 7, 6);
+  const stems = new THREE.InstancedMesh(stemGeo, new THREE.MeshBasicMaterial({ color: 0x6f9a4a }), COUNT);
+  const ears = new THREE.InstancedMesh(earGeo, new THREE.MeshBasicMaterial({ color: 0xe6b84e }), COUNT);
+  scene.add(stems, ears);
+
+  const data = [];
+  let idx = 0;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      data.push({
+        x: (c - COLS / 2) * 0.28 + (Math.random() - 0.5) * 0.14,
+        z: -1 - r * 0.55 + (Math.random() - 0.5) * 0.2,
+        h: 1.0 + Math.random() * 0.55 + r * 0.02,
+        phase: Math.random() * Math.PI * 2,
+        lean: 0.04 + Math.random() * 0.05,
+      });
+      idx++;
+    }
+  }
+
+  const m = new THREE.Matrix4();
+  const p = new THREE.Vector3();
+  const q = new THREE.Quaternion();
+  const s = new THREE.Vector3();
+  const e = new THREE.Euler();
+  const sc = new THREE.Vector3();
+
+  function layout(t) {
+    for (let i = 0; i < COUNT; i++) {
+      const d = data[i];
+      const sway = Math.sin(t * 0.9 + d.phase + d.x * 0.35) * d.lean + d.lean * 0.6;
+      e.set(0, 0, sway);
+      q.setFromEuler(e);
+      // stem: base at (x, 0, z), scaled up to its height
+      p.set(d.x, 0, d.z);
+      s.set(0.035, d.h, 0.035);
+      m.compose(p, q, s);
+      stems.setMatrixAt(i, m);
+      // ear: sits at the top of the stem, rotated with it
+      const ax = d.x - Math.sin(sway) * d.h;
+      const ay = Math.cos(sway) * d.h;
+      p.set(ax, ay, d.z);
+      sc.set(0.07, 0.2, 0.05);
+      m.compose(p, q, sc);
+      ears.setMatrixAt(i, m);
+    }
+    stems.instanceMatrix.needsUpdate = true;
+    ears.instanceMatrix.needsUpdate = true;
+  }
+
+  // Dust-like motes drifting up
+  const MOTES = 120;
+  const moteGeo = new THREE.BufferGeometry();
+  const motePos = new Float32Array(MOTES * 3);
+  for (let i = 0; i < MOTES; i++) {
+    motePos[i * 3] = (Math.random() - 0.5) * 12;
+    motePos[i * 3 + 1] = Math.random() * 4;
+    motePos[i * 3 + 2] = -1 - Math.random() * 9;
+  }
+  moteGeo.setAttribute("position", new THREE.BufferAttribute(motePos, 3));
+  const motes = new THREE.Points(moteGeo, new THREE.PointsMaterial({ color: 0xfff1c4, size: 0.05, transparent: true, opacity: 0.8 }));
+  scene.add(motes);
+
+  function resize() {
+    const w = hero.clientWidth, h = hero.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  // Pause when the hero is off screen
+  let visible = true;
+  new IntersectionObserver(entries => { visible = entries[0].isIntersecting; }).observe(hero);
+
+  const start = performance.now();
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (!visible) return;
+    const t = reduce ? 0 : (now - start) / 1000;
+    layout(t);
+    const y = motePos;
+    for (let i = 0; i < MOTES; i++) {
+      y[i * 3 + 1] += 0.004;
+      if (y[i * 3 + 1] > 4) y[i * 3 + 1] = 0;
+    }
+    moteGeo.attributes.position.needsUpdate = true;
+    renderer.render(scene, camera);
+  }
+  layout(0);
+  renderer.render(scene, camera);
+  if (!reduce) requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
