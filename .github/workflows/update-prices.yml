@@ -26,6 +26,21 @@ jobs:
           DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}
         run: python3 data/fetch_mandi.py
 
+      - name: Send price alerts via backend
+        # Runs only when BACKEND_URL and CRON_SECRET secrets are set.
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$BACKEND_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Backend not configured. Skipping alerts."
+            exit 0
+          fi
+          curl -sS --fail -X POST "$BACKEND_URL/api/check" \
+            -H "Content-Type: application/json" \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            --data-binary @data/prices.json
+
       - name: Commit updated prices
         run: |
           git config user.name "github-actions[bot]"
