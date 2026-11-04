@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cropora AI Alerts</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" />
+<style>
+  :root {
+    --forest: #17402a; --moss: #2c6a3f; --saffron: #e0801a;
+    --paper: #f7f2e3; --sheet: #fffdf6; --ink: #1d2418; --muted: #5f6856;
+    --hair: #e0d6bb; --error: #b9452c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0f1510; --sheet: #161d16; --ink: #ecefe4; --muted: #a3ab97;
+      --hair: #2a352a; --forest: #cfe6d2; --moss: #6fb281; --error: #ec8d73; color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: "Noto Sans Devanagari", system-ui, sans-serif; font-size: 16px; line-height: 1.6;
+    padding-block: 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 560px; margin: 0 auto; display: grid; gap: 16px; }
+  h1 { font-family: "Fraunces", Georgia, serif; color: var(--forest); font-size: 26px; margin: 0; }
+  .card { background: var(--sheet); border: 1px solid var(--hair); border-radius: 14px; padding: 18px; display: grid; gap: 12px; }
+  .card h2 { font-size: 17px; margin: 0; color: var(--forest); }
+  label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+  input, select {
+    font: inherit; font-size: 15px; color: var(--ink); background: var(--paper);
+    border: 1px solid var(--hair); border-radius: 10px; padding: 11px 12px; min-width: 0; width: 100%;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  button {
+    font: inherit; font-size: 15px; font-weight: 600; min-height: 44px; padding: 10px 14px;
+    border-radius: 10px; border: none; background: var(--saffron); color: #fff; cursor: pointer;
+  }
+  button.ghost { background: transparent; color: var(--moss); border: 1px solid var(--moss); }
+  button:disabled { opacity: .6; cursor: progress; }
+  .msg { font-size: 14px; color: var(--muted); }
+  .msg.err { color: var(--error); }
+  .alert-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px dashed var(--hair); }
+  .alert-item:last-child { border-bottom: none; }
+  .tag { font-size: 12px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--hair); color: var(--muted); white-space: nowrap; }
+  .tag.sent { color: var(--moss); border-color: var(--moss); }
+  .hidden { display: none !important; }
+  @media (max-width: 480px) { .row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Bhav Alert</h1>
+
+  <!-- Step 1: login -->
+  <section class="card" id="loginCard">
+    <h2>Login karein</h2>
+    <label>Mobile number ya email
+      <input id="contact" type="text" inputmode="email" placeholder="9876543210 ya you@example.com" autocomplete="username" />
+    </label>
+    <button id="sendOtp">Code bhejein</button>
+    <label class="hidden" id="codeWrap">Code (6 digit)
+      <input id="code" type="text" inputmode="numeric" maxlength="6" placeholder="------" autocomplete="one-time-code" />
+    </label>
+    <button class="hidden" id="verifyOtp">Verify karke login karein</button>
+    <div class="msg" id="loginMsg"></div>
+  </section>
+
+  <!-- Step 2: profile -->
+  <section class="card hidden" id="profileCard">
+    <h2>Aapki details</h2>
+    <label>Mobile number (alert SMS se jayega)
+      <input id="mobile" type="tel" inputmode="numeric" placeholder="10 digit mobile" />
+    </label>
+    <label>Message ki bhasha
+      <select id="lang">
+        <option value="hi">Hindi</option>
+        <option value="en">English</option>
+        <option value="both">Hindi aur English dono</option>
+      </select>
+    </label>
+    <button id="saveProfile">Save karein</button>
+    <div class="msg" id="profileMsg"></div>
+  </section>
+
+  <!-- Step 3: create alert -->
+  <section class="card hidden" id="alertCard">
+    <h2>Naya alert</h2>
+    <div class="row">
+      <label>Fasal
+        <select id="crop">
+          <option value="gehu">Gehu (Wheat)</option>
+          <option value="chawal">Chawal (Rice)</option>
+          <option value="sarson">Sarson (Mustard)</option>
+          <option value="pyaaz">Pyaaz (Onion)</option>
+          <option value="aloo">Aloo (Potato)</option>
+          <option value="tamatar">Tamatar (Tomato)</option>
+          <option value="makka">Makka (Maize)</option>
+        </select>
+      </label>
+      <label>Mandi (khali chhodein to koi bhi)
+        <input id="mandi" type="text" placeholder="Kolar Mandi" />
+      </label>
+    </div>
+    <div class="row">
+      <label>Limit
+        <select id="direction">
+          <option value="above">Is rate se upar jaaye</option>
+          <option value="below">Is rate se neeche aaye</option>
+        </select>
+      </label>
+      <label>Rate (Rs / quintal)
+        <input id="price" type="number" min="1" inputmode="numeric" placeholder="2000" />
+      </label>
+    </div>
+    <button id="createAlert">Alert set karein</button>
+    <div class="msg" id="alertMsg"></div>
+  </section>
+
+  <!-- Step 4: list -->
+  <section class="card hidden" id="listCard">
+    <h2>Aapke alerts</h2>
+    <div id="alertList" class="msg">Load ho raha hai...</div>
+  </section>
+</div>
+
+<script>
+  // Set this to your deployed backend URL, for example https://cropora-api.onrender.com
+  const API_BASE = "http://localhost:5000";
+
+  const $ = id => document.getElementById(id);
+  const CROP_NAME = { gehu: "Gehu", chawal: "Chawal", sarson: "Sarson", pyaaz: "Pyaaz", aloo: "Aloo", tamatar: "Tamatar", makka: "Makka" };
+  const DIR_TEXT = { above: "upar", below: "neeche" };
+
+  function store(key, val) { try { val === null ? localStorage.removeItem(key) : localStorage.setItem(key, val); } catch (_) {} }
+  function load(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }
+
+  async function api(path, opts = {}) {
+    const headers = { "Content-Type": "application/json" };
+    const token = load("cropora_token");
+    if (token) headers["Authorization"] = "Bearer " + token;
+    const res = await fetch(API_BASE + path, { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || ("Error " + res.status));
+    return data;
+  }
+
+  function say(id, text, isErr) { const el = $(id); el.textContent = text; el.classList.toggle("err", !!isErr); }
+
+  let contactValue = "";
+
+  $("sendOtp").addEventListener("click", async () => {
+    const btn = $("sendOtp"); btn.disabled = true;
+    try {
+      contactValue = $("contact").value.trim();
+      const r = await api("/api/otp/request", { method: "POST", body: JSON.stringify({ contact: contactValue }) });
+      $("codeWrap").classList.remove("hidden"); $("verifyOtp").classList.remove("hidden");
+      say("loginMsg", r.dev_code ? "Test code: " + r.dev_code : "Code aapke mobile ya email par bheja gaya hai.");
+    } catch (e) { say("loginMsg", e.message, true); }
+    btn.disabled = false;
+  });
+
+  $("verifyOtp").addEventListener("click", async () => {
+    try {
+      const r = await api("/api/otp/verify", { method: "POST", body: JSON.stringify({ contact: contactValue, code: $("code").value.trim() }) });
+      store("cropora_token", r.token);
+      showLoggedIn();
+    } catch (e) { say("loginMsg", e.message, true); }
+  });
+
+  $("saveProfile").addEventListener("click", async () => {
+    try {
+      await api("/api/profile", { method: "POST", body: JSON.stringify({ mobile: $("mobile").value.trim(), lang: $("lang").value }) });
+      say("profileMsg", "Save ho gaya.");
+      $("alertCard").classList.remove("hidden");
+      loadAlerts();
+    } catch (e) { say("profileMsg", e.message, true); }
+  });
+
+  $("createAlert").addEventListener("click", async () => {
+    try {
+      await api("/api/alerts", { method: "POST", body: JSON.stringify({
+        crop: $("crop").value,
+        mandi: $("mandi").value.trim(),
+        direction: $("direction").value,
+        price: Number($("price").value),
+      }) });
+      say("alertMsg", "Alert set ho gaya. Jab bhav limit tak pahunchega, SMS aayega.");
+      loadAlerts();
+    } catch (e) { say("alertMsg", e.message, true); }
+  });
+
+  async function loadAlerts() {
+    try {
+      const { alerts } = await api("/api/alerts");
+      const box = $("alertList");
+      box.innerHTML = "";
+      if (!alerts.length) { box.textContent = "Abhi koi alert nahi hai."; return; }
+      alerts.forEach(a => {
+        const row = document.createElement("div");
+        row.className = "alert-item";
+        const text = document.createElement("div");
+        const place = a.mandi || "koi bhi mandi";
+        text.textContent = `${CROP_NAME[a.crop]} · ${place} · Rs ${a.price} se ${DIR_TEXT[a.direction]}`;
+        const right = document.createElement("div");
+        right.style.display = "flex"; right.style.gap = "8px"; right.style.alignItems = "center";
+        const tag = document.createElement("span");
+        tag.className = "tag" + (a.status === "sent" ? " sent" : "");
+        tag.textContent = a.status === "sent" ? "SMS gaya" : "Active";
+        right.appendChild(tag);
+        if (a.status === "active") {
+          const del = document.createElement("button");
+          del.className = "ghost"; del.textContent = "Hatayein";
+          del.addEventListener("click", async () => { await api("/api/alerts/" + a.id, { method: "DELETE" }); loadAlerts(); });
+          right.appendChild(del);
+        }
+        row.appendChild(text); row.appendChild(right);
+        box.appendChild(row);
+      });
+    } catch (e) { say("alertList", e.message, true); }
+  }
+
+  async function showLoggedIn() {
+    $("loginCard").classList.add("hidden");
+    $("profileCard").classList.remove("hidden");
+    $("listCard").classList.remove("hidden");
+    try {
+      const p = await api("/api/profile");
+      if (p.mobile) $("mobile").value = p.mobile;
+      if (p.lang) $("lang").value = p.lang;
+      $("alertCard").classList.toggle("hidden", !p.mobile);
+      if (!p.mobile) say("profileMsg", "Alert ke liye pehle mobile number daalein.");
+    } catch (e) { store("cropora_token", null); location.reload(); }
+    loadAlerts();
+  }
+
+  if (load("cropora_token")) showLoggedIn();
+</script>
+<script>
+  // Preview only: fake API so the screens can be clicked without a backend.
+  let demoAlerts = [
+    { id: 1, crop: "tamatar", mandi: "Kolar Mandi", direction: "above", price: 2000, status: "active" },
+    { id: 2, crop: "pyaaz", mandi: null, direction: "below", price: 1200, status: "sent", triggered_price: 1150, triggered_mandi: "Lasalgaon Mandi" }
+  ];
+  async function api(path, opts = {}) {
+    const method = (opts.method || "GET").toUpperCase();
+    if (path === "/api/otp/request") return { ok: true, dev_code: "123456" };
+    if (path === "/api/otp/verify") return { token: "preview" };
+    if (path === "/api/profile") return method === "GET" ? { mobile: "9876543210", lang: "both" } : { ok: true };
+    if (path === "/api/alerts" && method === "GET") return { alerts: demoAlerts };
+    if (path === "/api/alerts" && method === "POST") {
+      const b = JSON.parse(opts.body);
+      demoAlerts.unshift({ id: Date.now(), ...b, status: "active" });
+      return { ok: true };
+    }
+    if (path.startsWith("/api/alerts/") && method === "DELETE") {
+      const id = Number(path.split("/").pop());
+      demoAlerts = demoAlerts.filter(a => a.id !== id);
+      return { ok: true };
+    }
+    return { ok: true };
+  }
+  showLoggedIn();
+</script>
+</body>
+</html>
