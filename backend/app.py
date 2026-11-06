@@ -26,6 +26,11 @@ CRON_SECRET = os.environ.get("CRON_SECRET", "")
 ALLOWED_ORIGIN = os.environ.get("ALLOWED_ORIGIN", "*")
 # Only for local testing. Never set this on the live server, or codes leak in responses.
 DEV_OTP_ECHO = os.environ.get("DEV_OTP_ECHO") == "1"
+# How alerts are delivered:
+#   email -> real email to the farmer (default, no DLT needed)
+#   sim   -> demo only: no message leaves the server, but the alert shows as "Demo SMS sent"
+#   sms   -> real SMS through the SMS provider (needs DLT templates)
+ALERT_CHANNEL = os.environ.get("ALERT_CHANNEL", "email").strip().lower()
 
 OTP_TTL = 300  # 5 minutes
 SESSION_TTL = 30 * 24 * 3600  # 30 days
@@ -54,6 +59,11 @@ CREATE TABLE IF NOT EXISTS alerts (
 
 with sqlite3.connect(DB_PATH) as _init:
     _init.executescript(SCHEMA)
+    for _col in ("channel TEXT", "message TEXT"):
+        try:
+            _init.execute(f"ALTER TABLE alerts ADD COLUMN {_col}")
+        except sqlite3.OperationalError:
+            pass  # column already exists
 
 app = Flask(__name__)
 
@@ -124,8 +134,8 @@ def health():
 @app.post("/api/otp/request")
 def otp_request():
     kind, value = normalize_contact((request.get_json(silent=True) or {}).get("contact"))
-    if not kind:
-        return err("Sahi mobile number (10 digit) ya email likhein.")
+    if kind != "email":
+        return err("Login abhi email se hota hai. Email daalein.")
 
     code = f"{secrets.randbelow(10**6):06d}"
     d = db()
@@ -136,10 +146,7 @@ def otp_request():
     d.commit()
 
     try:
-        if kind == "mobile":
-            sms.send_otp(value, code)
-        else:
-            mail.send(value, "Cropora AI login code", f"Cropora AI login code: {code}. Valid for 5 minutes.")
+        mail.send(value, "Cropora AI login code", f"Cropora AI login code: {code}. Valid for 5 minutes. Do not share.")
     except Exception as exc:
         app.logger.error("OTP send failed: %s", exc)
         return err("Code abhi nahi bheja ja saka. Thodi der baad koshish karein.", 502)
@@ -155,8 +162,8 @@ def otp_verify():
     body = request.get_json(silent=True) or {}
     kind, value = normalize_contact(body.get("contact"))
     code = str(body.get("code", "")).strip()
-    if not kind:
-        return err("Sahi mobile number ya email likhein.")
+    if kind != "email":
+        return err("Login abhi email se hota hai. Email daalein.")
 
     key = f"{kind}:{value}"
     d = db()
@@ -218,7 +225,7 @@ def list_alerts():
     if user is None:
         return err("Pehle login karein.", 401)
     rows = db().execute(
-        "SELECT id, crop, mandi, direction, price, status, triggered_at, triggered_price, triggered_mandi "
+        "SELECT id, crop, mandi, direction, price, status, triggered_at, triggered_price, triggered_mandi, channel, message "
         "FROM alerts WHERE user_id = ? ORDER BY id DESC",
         (user["id"],),
     ).fetchall()
@@ -230,8 +237,10 @@ def create_alert():
     user = current_user()
     if user is None:
         return err("Pehle login karein.", 401)
-    if not user["mobile"]:
-        return err("Pehle profile mein mobile number daalein, alert SMS se jayega.")
+    if ALERT_CHANNEL == "email" and not user["email"]:
+        return err("Alert ke liye email chahiye. Email se login karein.")
+    if ALERT_CHANNEL == "sms" and not user["mobile"]:
+        return err("SMS alert ke liye profile mein mobile number daalein.")
 
     body = request.get_json(silent=True) or {}
     crop = body.get("crop")
@@ -274,6 +283,19 @@ def delete_alert(alert_id):
     return jsonify({"ok": True})
 
 
+def deliver(alert_row, text: str) -> None:
+    """Send one alert through the configured channel. Raises on failure."""
+    if ALERT_CHANNEL == "email":
+        mail.send(alert_row["email"], "Cropora AI price alert", text)
+    elif ALERT_CHANNEL == "sms":
+        sms.send(alert_row["mobile"], text)
+    elif ALERT_CHANNEL == "sim":
+        # Demo only: nothing leaves the server. The text is saved and shown as a demo SMS.
+        app.logger.info("[demo SMS] %s", text)
+    else:
+        raise RuntimeError(f"Unknown ALERT_CHANNEL: {ALERT_CHANNEL}")
+
+
 @app.post("/api/check")
 def check_alerts():
     """Run once after the daily price update. Protected by CRON_SECRET."""
@@ -289,7 +311,7 @@ def check_alerts():
 
     d = db()
     rows = d.execute(
-        "SELECT a.*, u.mobile AS mobile, u.lang AS lang FROM alerts a "
+        "SELECT a.*, u.mobile AS mobile, u.email AS email, u.lang AS lang FROM alerts a "
         "JOIN users u ON u.id = a.user_id WHERE a.status = 'active'"
     ).fetchall()
 
@@ -319,17 +341,17 @@ def check_alerts():
             date=price_date,
         )
         try:
-            sms.send(a["mobile"], text)
+            deliver(a, text)
         except Exception as exc:
-            app.logger.error("SMS failed for alert %s: %s", a["id"], exc)
+            app.logger.error("Alert %s failed: %s", a["id"], exc)
             failed += 1
             continue
 
-        # One-time alert: once sent, it is done.
+        # One-time alert: once delivered, it is done.
         d.execute(
-            "UPDATE alerts SET status = 'sent', triggered_at = ?, triggered_price = ?, triggered_mandi = ? "
-            "WHERE id = ?",
-            (now(), float(hit["modal"]), hit.get("mandi"), a["id"]),
+            "UPDATE alerts SET status = 'sent', triggered_at = ?, triggered_price = ?, triggered_mandi = ?, "
+            "channel = ?, message = ? WHERE id = ?",
+            (now(), float(hit["modal"]), hit.get("mandi"), ALERT_CHANNEL, text, a["id"]),
         )
         sent += 1
 

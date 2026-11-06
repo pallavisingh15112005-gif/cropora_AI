@@ -8,11 +8,12 @@ cd backend
 pip install -r requirements.txt
 DEV_OTP_ECHO=1 CRON_SECRET=test-secret python app.py
 ```
-Without `SMS_API_URL` and `SMTP_HOST`, OTPs and alerts are only printed to the terminal.
+Login is by email OTP. Without `SMTP_HOST`, codes are only printed to the terminal.
 
 ## Environment variables (set on the server, never in code)
 | Name | Purpose |
 |---|---|
+| `ALERT_CHANNEL` | `email` (default, real email alerts), `sim` (demo: alert shows as a simulated SMS, nothing sent), or `sms` (real SMS, needs DLT). |
 | `CRON_SECRET` | Long random string. Same value goes in the GitHub secret `CRON_SECRET`. |
 | `ALLOWED_ORIGIN` | Your site, e.g. `https://pallavisingh15112005-gif.github.io` |
 | `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER_ID`, `DLT_TEMPLATE_ID` | SMS provider details (India needs DLT registration) |
@@ -26,6 +27,7 @@ Without `SMS_API_URL` and `SMTP_HOST`, OTPs and alerts are only printed to the t
 4. In `alerts.html`, set `API_BASE` to the backend address, then publish the page.
 
 ## Before going live
+- Login is email-only for now. SMS needs DLT templates, so use `ALERT_CHANNEL=sim` for demos.
 - SMS messages must match DLT-approved templates. Keep the text in `messages.py` identical to the registered template.
 - Hindi SMS uses Unicode, so each message costs more and fits fewer characters. "both" costs the most.
 - Add rate limiting on `/api/otp/request` before opening it to the public.

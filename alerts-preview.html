@@ -56,8 +56,8 @@
   <!-- Step 1: login -->
   <section class="card" id="loginCard">
     <h2>Login karein</h2>
-    <label>Mobile number ya email
-      <input id="contact" type="text" inputmode="email" placeholder="9876543210 ya you@example.com" autocomplete="username" />
+    <label>Email
+      <input id="contact" type="email" inputmode="email" placeholder="you@example.com" autocomplete="email" />
     </label>
     <button id="sendOtp">Code bhejein</button>
     <label class="hidden" id="codeWrap">Code (6 digit)
@@ -70,7 +70,7 @@
   <!-- Step 2: profile -->
   <section class="card hidden" id="profileCard">
     <h2>Aapki details</h2>
-    <label>Mobile number (alert SMS se jayega)
+    <label>Mobile number (SMS ke liye, abhi optional)
       <input id="mobile" type="tel" inputmode="numeric" placeholder="10 digit mobile" />
     </label>
     <label>Message ki bhasha
@@ -132,6 +132,7 @@
   const $ = id => document.getElementById(id);
   const CROP_NAME = { gehu: "Gehu", chawal: "Chawal", sarson: "Sarson", pyaaz: "Pyaaz", aloo: "Aloo", tamatar: "Tamatar", makka: "Makka" };
   const DIR_TEXT = { above: "upar", below: "neeche" };
+  const CHANNEL_LABEL = { email: "Email bheja gaya", sim: "Demo SMS bheja gaya", sms: "SMS gaya" };
 
   function store(key, val) { try { val === null ? localStorage.removeItem(key) : localStorage.setItem(key, val); } catch (_) {} }
   function load(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }
@@ -173,7 +174,6 @@
     try {
       await api("/api/profile", { method: "POST", body: JSON.stringify({ mobile: $("mobile").value.trim(), lang: $("lang").value }) });
       say("profileMsg", "Save ho gaya.");
-      $("alertCard").classList.remove("hidden");
       loadAlerts();
     } catch (e) { say("profileMsg", e.message, true); }
   });
@@ -186,7 +186,7 @@
         direction: $("direction").value,
         price: Number($("price").value),
       }) });
-      say("alertMsg", "Alert set ho gaya. Jab bhav limit tak pahunchega, SMS aayega.");
+      say("alertMsg", "Alert set ho gaya. Jab bhav limit tak pahunchega, aapko message milega.");
       loadAlerts();
     } catch (e) { say("alertMsg", e.message, true); }
   });
@@ -207,7 +207,7 @@
         right.style.display = "flex"; right.style.gap = "8px"; right.style.alignItems = "center";
         const tag = document.createElement("span");
         tag.className = "tag" + (a.status === "sent" ? " sent" : "");
-        tag.textContent = a.status === "sent" ? "SMS gaya" : "Active";
+        tag.textContent = a.status !== "sent" ? "Active" : CHANNEL_LABEL[a.channel] || "Bheja gaya";
         right.appendChild(tag);
         if (a.status === "active") {
           const del = document.createElement("button");
@@ -216,6 +216,14 @@
           right.appendChild(del);
         }
         row.appendChild(text); row.appendChild(right);
+        if (a.status === "sent" && a.message) {
+          const msg = document.createElement("div");
+          msg.className = "msg";
+          msg.style.width = "100%";
+          msg.style.whiteSpace = "pre-line";
+          msg.textContent = a.message;
+          row.appendChild(msg);
+        }
         box.appendChild(row);
       });
     } catch (e) { say("alertList", e.message, true); }
@@ -229,8 +237,7 @@
       const p = await api("/api/profile");
       if (p.mobile) $("mobile").value = p.mobile;
       if (p.lang) $("lang").value = p.lang;
-      $("alertCard").classList.toggle("hidden", !p.mobile);
-      if (!p.mobile) say("profileMsg", "Alert ke liye pehle mobile number daalein.");
+      $("alertCard").classList.remove("hidden");
     } catch (e) { store("cropora_token", null); location.reload(); }
     loadAlerts();
   }
@@ -241,13 +248,14 @@
   // Preview only: fake API so the screens can be clicked without a backend.
   let demoAlerts = [
     { id: 1, crop: "tamatar", mandi: "Kolar Mandi", direction: "above", price: 2000, status: "active" },
-    { id: 2, crop: "pyaaz", mandi: null, direction: "below", price: 1200, status: "sent", triggered_price: 1150, triggered_mandi: "Lasalgaon Mandi" }
+    { id: 2, crop: "pyaaz", mandi: null, direction: "below", price: 1200, status: "sent", channel: "sim", triggered_price: 1150, triggered_mandi: "Lasalgaon Mandi",
+      message: "Cropora AI: Onion at Lasalgaon Mandi is now Rs 1150 (2026-11-06), below your limit of Rs 1200.\nCropora AI: प्याज ka bhav Lasalgaon Mandi mein ab Rs 1150 hai (2026-11-06). Aapki limit Rs 1200 se नीचे." }
   ];
   async function api(path, opts = {}) {
     const method = (opts.method || "GET").toUpperCase();
     if (path === "/api/otp/request") return { ok: true, dev_code: "123456" };
     if (path === "/api/otp/verify") return { token: "preview" };
-    if (path === "/api/profile") return method === "GET" ? { mobile: "9876543210", lang: "both" } : { ok: true };
+    if (path === "/api/profile") return method === "GET" ? { email: "farmer@example.com", mobile: null, lang: "both" } : { ok: true };
     if (path === "/api/alerts" && method === "GET") return { alerts: demoAlerts };
     if (path === "/api/alerts" && method === "POST") {
       const b = JSON.parse(opts.body);
