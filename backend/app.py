@@ -135,12 +135,11 @@ def otp_request():
     )
     d.commit()
 
-    text = f"Cropora AI login code: {code}. 5 minute mein expire hoga. Your code is valid for 5 minutes."
     try:
         if kind == "mobile":
-            sms.send(value, text)
+            sms.send_otp(value, code)
         else:
-            mail.send(value, "Cropora AI login code", text)
+            mail.send(value, "Cropora AI login code", f"Cropora AI login code: {code}. Valid for 5 minutes.")
     except Exception as exc:
         app.logger.error("OTP send failed: %s", exc)
         return err("Code abhi nahi bheja ja saka. Thodi der baad koshish karein.", 502)
