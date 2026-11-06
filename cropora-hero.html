@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="claude:viewport-fit-sides" content="cover" />
+<title>Cropora AI</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  /* Layout: full-screen 3D field, a centred headline, and one input card that answers in place.
+     Palette: forest green for text, saffron for the one action, wheat and sky for the field. */
+  :root {
+    --field: #17402a;
+    --moss: #2c6a3f;
+    --saffron: #e0801a;
+    --sky-top: #f6e3b0;
+    --sky-bottom: #f7f2e3;
+    --sheet: rgba(255, 253, 246, 0.94);
+    --ink: #1d2418;
+    --muted: #5f6856;
+    --hair: rgba(23, 64, 42, 0.14);
+    --sans: "Noto Sans Devanagari", "Segoe UI", system-ui, sans-serif;
+    --serif: "Fraunces", Georgia, "Times New Roman", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --field: #cfe6d2; --moss: #6fb281; --sky-top: #1d2a1f; --sky-bottom: #0f1510;
+      --sheet: rgba(22, 29, 22, 0.94); --ink: #ecefe4; --muted: #a3ab97; --hair: rgba(207, 230, 210, 0.14);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --field: #cfe6d2; --moss: #6fb281; --sky-top: #1d2a1f; --sky-bottom: #0f1510;
+    --sheet: rgba(22, 29, 22, 0.94); --ink: #ecefe4; --muted: #a3ab97; --hair: rgba(207, 230, 210, 0.14);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--sans);
+    color: var(--ink);
+    background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bottom) 70%);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .stage { position: fixed; inset: 0; overflow: hidden; }
+  #field { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  /* Soft wash behind the text so it reads over the scene */
+  .stage::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 38%, rgba(255, 252, 240, 0.55), rgba(255, 252, 240, 0) 62%);
+  }
+
+  .frame {
+    position: relative; z-index: 1; height: 100%;
+    display: flex; flex-direction: column;
+    padding-top: max(20px, env(safe-area-inset-top, 0px));
+    padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(20px, env(safe-area-inset-left, 0px));
+    padding-right: max(20px, env(safe-area-inset-right, 0px));
+  }
+
+  /* Top bar */
+  nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 44px; }
+  .brand { display: flex; align-items: center; gap: 10px; color: var(--field); text-decoration: none; font-weight: 600; font-size: 18px; }
+  .mark {
+    width: 34px; height: 34px; border-radius: 11px;
+    background: var(--field); display: grid; place-items: center;
+  }
+  .links { display: flex; gap: 28px; font-size: 15px; }
+  .links a { color: var(--field); text-decoration: none; opacity: 0.85; }
+  .links a:hover { opacity: 1; text-decoration: underline; }
+  .cta {
+    font: inherit; font-size: 15px; font-weight: 600; color: #fff; text-decoration: none;
+    background: var(--field); border-radius: 12px; padding: 10px 18px; min-height: 40px;
+    display: inline-flex; align-items: center;
+  }
+  .cta:hover { filter: brightness(1.12); }
+
+  /* Centre */
+  main {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 26px; text-align: center; padding-bottom: 4vh;
+  }
+  h1 {
+    font-family: var(--serif); font-weight: 700; color: var(--field);
+    font-size: clamp(30px, 5.2vw, 56px); line-height: 1.1; max-width: 18ch; text-wrap: balance;
+  }
+  .sub { font-size: clamp(15px, 1.7vw, 18px); color: var(--ink); max-width: 46ch; }
+
+  /* Input card */
+  .card {
+    width: min(100%, 680px);
+    background: var(--sheet);
+    border: 1px solid var(--hair);
+    border-radius: 22px;
+    padding: 18px 18px 14px;
+    box-shadow: 0 18px 50px -18px rgba(23, 64, 42, 0.35);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    text-align: left;
+  }
+  .card textarea {
+    width: 100%; min-height: 56px; max-height: 140px; resize: none;
+    font: inherit; font-size: 16px; line-height: 1.5; color: var(--ink);
+    background: transparent; border: none; outline: none;
+  }
+  .card textarea::placeholder { color: var(--muted); opacity: 0.9; }
+  .card:focus-within { box-shadow: 0 18px 50px -18px rgba(23, 64, 42, 0.35), 0 0 0 4px rgba(44, 106, 63, 0.15); }
+
+  .tools {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--hair);
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+  .chip {
+    font: inherit; font-size: 13px; color: var(--field);
+    background: transparent; border: 1px solid var(--moss); border-radius: 999px;
+    padding: 6px 12px; cursor: pointer; min-height: 32px;
+  }
+  .chip:hover { background: var(--field); color: #fff; }
+  .send {
+    flex: none; width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--saffron); color: #fff; display: grid; place-items: center;
+    box-shadow: 0 6px 14px rgba(224, 128, 26, 0.35);
+    transition: filter 0.15s ease, transform 0.12s ease;
+  }
+  .send:hover { filter: brightness(1.07); }
+  .send:active { transform: scale(0.95); }
+  .send:focus-visible, .chip:focus-visible, .cta:focus-visible, .links a:focus-visible {
+    outline: 3px solid var(--saffron); outline-offset: 3px;
+  }
+
+  /* Answer that appears under the card */
+  .answer {
+    width: min(100%, 680px); text-align: left;
+    background: var(--sheet); border: 1px solid var(--hair); border-radius: 18px;
+    padding: 16px 18px; font-size: 15px; line-height: 1.6;
+    box-shadow: 0 12px 30px -16px rgba(23, 64, 42, 0.3);
+  }
+  .answer[hidden] { display: none !important; }
+  .answer .who { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .answer .big { font-family: var(--serif); font-size: 26px; font-weight: 700; color: var(--field); font-variant-numeric: tabular-nums; }
+  .answer .meta { color: var(--muted); font-size: 14px; }
+  .up { color: #2a8a4a; font-weight: 600; } .down { color: #b9452c; font-weight: 600; }
+
+  /* Entrance: runs once, then stops */
+  .anim .rise { animation: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .anim .rise.d1 { animation-delay: 0.12s; }
+  .anim .rise.d2 { animation-delay: 0.26s; }
+  .anim .rise.d3 { animation-delay: 0.4s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+  @media (max-width: 640px) {
+    .links { display: none; }
+    .brand span.word { font-size: 16px; }
+    .tools { flex-wrap: wrap; }
+    .chips { order: 2; width: 100%; }
+    .send { margin-left: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <canvas id="field" aria-hidden="true"></canvas>
+
+  <div class="frame">
+    <nav class="rise">
+      <a class="brand" href="#" aria-label="Cropora AI home">
+        <span class="mark" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M12 21V8" stroke="#f0cf7a" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M12 8c-2.4-.6-3.8-2.1-4-4.6 2.5.3 3.9 1.9 4 4.6Zm0 0c2.4-.6 3.8-2.1 4-4.6-2.5.3-3.9 1.9-4 4.6Zm0 5.5c-2.4-.6-3.8-2.1-4-4.6 2.5.3 3.9 1.9 4 4.6Zm0 0c2.4-.6 3.8-2.1 4-4.6-2.5.3-3.9 1.9-4 4.6Z" fill="#f0cf7a"/>
+          </svg>
+        </span>
+        <span class="word">Cropora AI</span>
+      </a>
+      <div class="links">
+        <a href="#bhav">Bhav</a>
+        <a href="alerts-preview.html">Alerts</a>
+        <a href="login-page.html">Login</a>
+      </div>
+      <a class="cta" href="login-page.html">Login karein</a>
+    </nav>
+
+    <main>
+      <h1 class="rise d1">Fasal ka bhav, seedha aapke phone par.</h1>
+      <p class="sub rise d2">Fasal ka naam likhein. Ya limit set karein, aur bhav wahan pahunchne par message paayein.</p>
+
+      <form class="card rise d3" id="composer" autocomplete="off">
+        <textarea id="question" rows="2" aria-label="Apna sawaal likhein" placeholder="Jaise: aloo ka bhav kya hai?"></textarea>
+        <div class="tools">
+          <div class="chips">
+            <button type="button" class="chip" data-q="Sabhi bhav">Sabhi bhav</button>
+            <button type="button" class="chip" data-q="Gehu ka bhav">Gehu</button>
+            <button type="button" class="chip" data-q="Aloo ka bhav">Aloo</button>
+            <button type="button" class="chip" data-q="Tamatar ka bhav">Tamatar</button>
+          </div>
+          <button class="send" type="submit" aria-label="Bhav poochhein">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </form>
+
+      <div class="answer" id="answer" hidden aria-live="polite"></div>
+    </main>
+  </div>
+</div>
+
+<script>
+  // Demo prices (Rs per quintal). Replace with data/prices.json when it is live.
+  const PRICES = {
+    gehu:    { label: "Gehu",    mandi: "Lucknow Mandi",   price: 2480, prev: 2452 },
+    aloo:    { label: "Aloo",    mandi: "Agra Mandi",      price: 1180, prev: 1175 },
+    pyaaz:   { label: "Pyaaz",   mandi: "Lasalgaon Mandi", price: 1420, prev: 1560 },
+    tamatar: { label: "Tamatar", mandi: "Kolar Mandi",     price: 1890, prev: 1640 },
+  };
+  const KEYWORDS = { gehu: ["gehu", "gehun", "wheat"], aloo: ["aloo", "potato"], pyaaz: ["pyaaz", "onion"], tamatar: ["tamatar", "tomato"] };
+  const fmt = n => "₹" + n.toLocaleString("en-IN");
+
+  function trend(c) {
+    const d = c.price - c.prev;
+    if (!d) return '<span class="meta">— sthir</span>';
+    const pct = Math.abs((d / c.prev) * 100).toFixed(1);
+    return d > 0 ? `<span class="up">▲ ${fmt(Math.abs(d))} (${pct}%)</span>` : `<span class="down">▼ ${fmt(Math.abs(d))} (${pct}%)</span>`;
+  }
+
+  function answer(text) {
+    const q = text.toLowerCase();
+    if (/(sabhi|sab|all|list)/.test(q)) {
+      return Object.values(PRICES).map(c => `${c.label} · ${c.mandi}: <b>${fmt(c.price)}</b> ${trend(c)}`).join("<br />");
+    }
+    const key = Object.keys(KEYWORDS).find(k => KEYWORDS[k].some(w => q.includes(w)));
+    if (!key) return "Ye fasal abhi mere data mein nahi hai. Gehu, aloo, pyaaz, ya tamatar poochh kar dekhein.";
+    const c = PRICES[key];
+    return `<div class="big">${fmt(c.price)} <span class="meta">/ quintal</span></div><div>${c.label} · ${c.mandi}</div><div>Kal se: ${trend(c)}</div>`;
+  }
+
+  const box = document.getElementById("answer");
+  const input = document.getElementById("question");
+
+  function ask(text) {
+    const clean = text.trim();
+    if (!clean) { input.focus(); return; }
+    box.hidden = false;
+    box.innerHTML = `<div class="who">Cropora AI</div>${answer(clean)}<div class="meta" style="margin-top:8px">Demo bhav hai. Asli data roz update hota hai.</div>`;
+  }
+
+  document.getElementById("composer").addEventListener("submit", e => { e.preventDefault(); ask(input.value); });
+  input.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(input.value); } });
+  document.querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => { input.value = b.dataset.q; ask(b.dataset.q); }));
+
+  // Entrance animation: plays once on the first paint, then stops.
+  if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("anim");
+</script>
+
+<script>
+(function () {
+  const stage = document.getElementById("stage");
+  const canvas = document.getElementById("field");
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let gl = null;
+  try { gl = document.createElement("canvas").getContext("webgl"); } catch (_) {}
+  if (!gl || typeof THREE === "undefined") return; // gradient stays
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0xf7f2e3, 10, 24);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+  camera.position.set(0, 1.6, 7);
+  camera.lookAt(0, 1.2, -2);
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshBasicMaterial({ color: 0xc9a85c }));
+  ground.rotation.x = -Math.PI / 2;
+  scene.add(ground);
+
+  const sun = new THREE.Mesh(new THREE.SphereGeometry(0.9, 24, 24), new THREE.MeshBasicMaterial({ color: 0xf6d37a }));
+  sun.position.set(3.4, 4.2, -12);
+  scene.add(sun);
+
+  const COLS = 52, ROWS = 14, COUNT = COLS * ROWS;
+  const stemGeo = new THREE.CylinderGeometry(0.5, 0.5, 1, 5); stemGeo.translate(0, 0.5, 0);
+  const earGeo = new THREE.SphereGeometry(0.5, 7, 6);
+  const stems = new THREE.InstancedMesh(stemGeo, new THREE.MeshBasicMaterial({ color: 0x6f9a4a }), COUNT);
+  const ears = new THREE.InstancedMesh(earGeo, new THREE.MeshBasicMaterial({ color: 0xe6b84e }), COUNT);
+  scene.add(stems, ears);
+
+  const data = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    data.push({
+      x: (c - COLS / 2) * 0.3 + (Math.random() - 0.5) * 0.14,
+      z: -1.5 - r * 0.6 + (Math.random() - 0.5) * 0.2,
+      h: 1.0 + Math.random() * 0.6 + r * 0.02,
+      phase: Math.random() * Math.PI * 2,
+      lean: 0.04 + Math.random() * 0.05,
+    });
+  }
+
+  const m = new THREE.Matrix4(), p = new THREE.Vector3(), q = new THREE.Quaternion();
+  const s = new THREE.Vector3(), e = new THREE.Euler(), sc = new THREE.Vector3();
+  function layout(t) {
+    for (let i = 0; i < COUNT; i++) {
+      const d = data[i];
+      const sway = Math.sin(t * 0.9 + d.phase + d.x * 0.35) * d.lean + d.lean * 0.6;
+      e.set(0, 0, sway); q.setFromEuler(e);
+      p.set(d.x, 0, d.z); s.set(0.035, d.h, 0.035);
+      m.compose(p, q, s); stems.setMatrixAt(i, m);
+      p.set(d.x - Math.sin(sway) * d.h, Math.cos(sway) * d.h, d.z);
+      sc.set(0.07, 0.2, 0.05);
+      m.compose(p, q, sc); ears.setMatrixAt(i, m);
+    }
+    stems.instanceMatrix.needsUpdate = true;
+    ears.instanceMatrix.needsUpdate = true;
+  }
+
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  let visible = true;
+  new IntersectionObserver(en => { visible = en[0].isIntersecting; }).observe(stage);
+
+  const start = performance.now();
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (!visible) return;
+    layout(reduce ? 0 : (now - start) / 1000);
+    renderer.render(scene, camera);
+  }
+  layout(0);
+  renderer.render(scene, camera);
+  if (!reduce) requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
